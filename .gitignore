@@ -1,0 +1,30 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+
+# ---------- AWS ----------
+.aws/
+*.pem
+*.zip
+deployment/
+
+# ---------- Test images ----------
+# Keep the folder README but never commit generated images
+tests/test_images/*
+!tests/test_images/README.md
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- IDE ----------
+.vscode/
+.idea/
+*.swp
