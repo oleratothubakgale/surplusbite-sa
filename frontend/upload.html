@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="styles.css">
+    <title>SurplusBite - Upload Photo</title>
+   
+</head>
+<body>
+
+    <!-- Background Animations -->
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
+
+    <!-- Main 3D Card -->
+    <div class="card" id="ui-card">
+        
+        <div class="logo">
+            <!-- Simple camera/leaf icon -->
+            <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+        </div>
+
+        <h1>SurplusBite</h1>
+        <p>Upload a photo of your surplus food or produce to generate thumbnails.</p>
+
+        <div class="upload-area" id="drop-zone">
+            <input type="file" id="file-input" accept="image/jpeg, image/png">
+            <span class="icon-upload">📸</span>
+            <span class="upload-text" id="file-label">Tap to select photo</span>
+            <span class="upload-subtext">JPG or PNG up to 10MB</span>
+        </div>
+
+        <button id="upload-btn" class="btn-upload" disabled>
+            <span class="btn-text">Upload Photo</span>
+            <span class="spinner"></span>
+        </button>
+
+        <div id="status"></div>
+    </div>
+
+<script src="index.js"></script>
+</body>
+</html>

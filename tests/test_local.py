@@ -11,7 +11,7 @@ from pathlib import Path
 # Allow `from lambda_function import ...` without installing as a package
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from lambda_function import process_image  # noqa: E402
+from backend.lambda_function import process_image  # noqa: E402
 
 TEST_DIR = Path(__file__).resolve().parent / "test_images"
 VALID_EXTENSIONS = {".jpg", ".jpeg", ".png"}
