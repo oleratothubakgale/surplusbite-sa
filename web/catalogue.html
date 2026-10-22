@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SurplusBite - Marketplace</title>
+    <!-- Link to the external CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Background Animations -->
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-logo">🍃 SurplusBite</div>
+        <a href="upload.html" class="btn-nav">+ Upload Photo</a>
+    </nav>
+
+    <div class="container">
+        <header>
+            <h1>Local Surplus Marketplace</h1>
+            <p>Browse surplus food and produce near you.</p>
+        </header>
+
+        <!-- Filter Chips -->
+        <div class="filters">
+            <div class="chip active">All Listings</div>
+            <div class="chip">🥦 Produce</div>
+            <div class="chip">🥖 Bakery</div>
+            <div class="chip">🍲 Prepared Food</div>
+        </div>
+
+        <!-- The Grid (Injected by JS) -->
+        <div class="grid" id="catalogue-grid"></div>
+    </div>
+
+    <!-- Link to the external JavaScript -->
+    <script src="catalogue.js"></script>
+</body>
+</html>

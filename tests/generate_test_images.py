@@ -62,3 +62,4 @@ if __name__ == "__main__":
     make_tiny_jpg()
     make_corrupt()
     print("\nDone. Next: run tests/test_local.py")
+      
