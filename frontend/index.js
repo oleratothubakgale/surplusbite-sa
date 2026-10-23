@@ -1,6 +1,5 @@
-     // CLOUD ENGINEER / FRONTEND INTEGRATION NOTE:
-        // Replace this with the actual Lambda Function URL provided by the Cloud Engineer.
-        const API_URL = "YOUR_LAMBDA_FUNCTION_URL_HERE"; 
+    // Set this to the UploadUrl output from the deployed SAM stack.
+    const API_URL = "https://gg2pixet4ojrmgcqfthhlaef740vqscd.lambda-url.eu-west-1.on.aws/";
 
         const card = document.getElementById('ui-card');
         const fileInput = document.getElementById('file-input');
@@ -54,6 +53,12 @@
            ========================================= */
         uploadBtn.addEventListener('click', async () => {
             if (!selectedFile) return;
+
+            if (!API_URL.startsWith('https://')) {
+                statusDiv.textContent = "Upload service is not configured yet.";
+                statusDiv.className = "error show";
+                return;
+            }
 
             // Trigger Loading State
             uploadBtn.disabled = true;

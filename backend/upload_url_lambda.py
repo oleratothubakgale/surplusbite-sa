@@ -14,8 +14,19 @@ import boto3
 import os
 import json
 import uuid
+import logging
+from botocore.config import Config
 
-s3_client = boto3.client("s3")
+s3_client = boto3.client(
+    "s3",
+    region_name=os.environ.get("AWS_REGION", "eu-west-1"),
+    config=Config(
+        signature_version="s3v4",
+        s3={"addressing_style": "virtual"},
+    ),
+)
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 def lambda_handler(event, context):
     source_bucket = os.environ.get("SOURCE_BUCKET")
@@ -52,7 +63,6 @@ def lambda_handler(event, context):
         return {
             "statusCode": 200,
             "headers": {
-                "Access-Control-Allow-Origin": "*", # Update to frontend domain in production
                 "Content-Type": "application/json"
             },
             "body": json.dumps({
@@ -60,5 +70,10 @@ def lambda_handler(event, context):
                 "key": unique_key
             })
         }
-    except Exception as e:
-        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+    except Exception:
+        logger.exception("Failed to generate a presigned upload URL")
+        return {
+            "statusCode": 500,
+            "headers": {"Content-Type": "application/json"},
+            "body": json.dumps({"error": "Could not create upload URL"})
+        }

@@ -8,6 +8,7 @@ import json
 from io import BytesIO
 from datetime import datetime, timezone
 from typing import Optional
+from urllib.parse import unquote_plus
 
 import boto3
 from PIL import Image, UnidentifiedImageError
@@ -169,7 +170,7 @@ def lambda_handler(event, context):
 
     for record in event.get("Records", []):
         src_bucket = record["s3"]["bucket"]["name"]
-        key = record["s3"]["object"]["key"]
+        key = unquote_plus(record["s3"]["object"]["key"])
         
         logger.info(f"Received event for s3://{src_bucket}/{key}")
 
@@ -188,8 +189,9 @@ def lambda_handler(event, context):
                 card_key = f"thumbnails/{base_name}_card.{ext}"
                 pin_key = f"thumbnails/{base_name}_pin.{ext}"
 
-                s3_client.put_object(Bucket=output_bucket, Key=card_key, Body=result["card_bytes"], ContentType=f"image/{ext}")
-                s3_client.put_object(Bucket=output_bucket, Key=pin_key, Body=result["pin_bytes"], ContentType=f"image/{ext}")
+                content_type = "image/jpeg" if ext == "jpg" else "image/png"
+                s3_client.put_object(Bucket=output_bucket, Key=card_key, Body=result["card_bytes"], ContentType=content_type)
+                s3_client.put_object(Bucket=output_bucket, Key=pin_key, Body=result["pin_bytes"], ContentType=content_type)
                 
                 catalogue_entry = {
                     "id": base_name,
