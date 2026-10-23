@@ -1,0 +1,193 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  SurplusBite photo upload pipeline — reuses the existing private upload bucket
+  and creates an isolated output bucket with least-privilege Lambda access.
+
+Parameters:
+  SourceBucket:
+    Type: String
+    Default: surplusbite-photos-405034826598
+    Description: Existing S3 bucket that receives original uploads.
+  FrontendOrigin:
+    Type: String
+    Default: https://d19a31sgm2plos.cloudfront.net
+    Description: Exact HTTPS origin of the existing CloudFront frontend.
+  EnableRekognition:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Enable optional food label detection (may incur charges).
+
+Conditions:
+  RekognitionEnabled: !Equals [!Ref EnableRekognition, "true"]
+
+Resources:
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Stores generated thumbnails and the catalogue separately from input uploads to prevent recursive S3 triggers.
+        must:
+          - Keep all public access blocked; serve objects through an authorized distribution or application only.
+          - Do not configure this bucket to trigger the image processor.
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+
+  OutputBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref OutputBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt OutputBucket.Arn
+              - !Sub "${OutputBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  UploadUrlFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Issues short-lived presigned PUT URLs so browsers upload directly to S3 without AWS credentials.
+        must:
+          - Function URL CORS origin must exactly match the frontend HTTPS origin.
+          - IAM may write only under the uploads prefix of the configured source bucket.
+    Properties:
+      CodeUri: backend/url_package/
+      Handler: upload_url_lambda.lambda_handler
+      Runtime: python3.12
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Environment:
+        Variables:
+          SOURCE_BUCKET: !Ref SourceBucket
+      Policies:
+        - Statement:
+            - Sid: AllowUploadObjectsOnly
+              Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: !Sub "arn:${AWS::Partition}:s3:::${SourceBucket}/uploads/*"
+      FunctionUrlConfig:
+        AuthType: NONE
+        InvokeMode: BUFFERED
+        Cors:
+          AllowOrigins:
+            - !Ref FrontendOrigin
+          AllowMethods:
+            - GET
+          AllowHeaders:
+            - content-type
+          AllowCredentials: false
+          MaxAge: 300
+
+  ImageProcessorFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: Processes S3 upload events into thumbnails and a small JSON catalogue; serial execution avoids concurrent read-modify-write catalogue races.
+        must:
+          - Input events are limited to the uploads prefix of the source bucket.
+          - Never trigger this function from the output bucket.
+    Properties:
+      CodeUri: backend/processor_package/
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.12
+      Architectures:
+        - x86_64
+      MemorySize: 512
+      Timeout: 30
+      Environment:
+        Variables:
+          OUTPUT_BUCKET: !Ref OutputBucket
+          ENABLE_REKOGNITION: !Ref EnableRekognition
+      Policies:
+        - Statement:
+            - Sid: ReadUploadedPhotos
+              Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: !Sub "arn:${AWS::Partition}:s3:::${SourceBucket}/uploads/*"
+            - Sid: ReadAndWriteGeneratedAssets
+              Effect: Allow
+              Action:
+                - s3:GetObject
+                - s3:PutObject
+              Resource: !Sub "${OutputBucket.Arn}/*"
+            - Sid: CheckCatalogueExistence
+              Effect: Allow
+              Action:
+                - s3:ListBucket
+              Resource: !GetAtt OutputBucket.Arn
+              Condition:
+                StringLike:
+                  s3:prefix:
+                    - catalogue/index.json
+
+  RekognitionPolicy:
+    Type: AWS::IAM::Policy
+    Condition: RekognitionEnabled
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-rekognition-detect-labels"
+      Roles:
+        - !Ref ImageProcessorFunctionRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - rekognition:DetectLabels
+            Resource: "*"
+
+  AllowS3InvokeImageProcessor:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt ImageProcessorFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceAccount: !Ref AWS::AccountId
+      SourceArn: !Sub "arn:${AWS::Partition}:s3:::${SourceBucket}"
+
+Outputs:
+  UploadUrl:
+    Description: Function URL to set as API_URL in frontend/index.js.
+    Value: !GetAtt UploadUrlFunctionUrl.FunctionUrl
+  ImageProcessorFunctionName:
+    Description: Lambda to select when configuring the source-bucket S3 event notification.
+    Value: !Ref ImageProcessorFunction
+  SourceBucketName:
+    Description: Existing bucket for browser uploads and S3 trigger configuration.
+    Value: !Ref SourceBucket
+  OutputBucketName:
+    Description: Private bucket containing generated thumbnails and catalogue/index.json.
+    Value: !Ref OutputBucket
+  FrontendOrigin:
+    Description: Allowed browser origin configured on the upload URL function.
+    Value: !Ref FrontendOrigin

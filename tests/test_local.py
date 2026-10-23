@@ -8,8 +8,8 @@ Or in the integrated terminal: python tests/test_local.py
 import sys
 from pathlib import Path
 
-# Allow `from lambda_function import ...` without installing as a package
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
+# Allow `from backend.lambda_function import ...` from the repository root.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from backend.lambda_function import process_image  # noqa: E402
 
